@@ -26,11 +26,15 @@ void ofApp::setup(){
 }
 
 void ofApp::update(){
-	ofSetWindowTitle(ofToString(ofGetFrameRate()));
+    
+    // some dumb metrics to test midi
+    zMin = 0;
+    
+    ofSetWindowTitle(ofToString(ofGetFrameRate()));
 
 	astra.update();
 
-	if (astra.isFrameNew() && bDrawPointCloud) {
+	if (astra.isFrameNew()) {
 		mesh.clear();
 
 		int maxDepth = 1500;
@@ -40,10 +44,16 @@ void ofApp::update(){
 		for (int y = 0; y < h; y++) {
 			for (int x = 0; x < w; x++) {
 				ofVec3f p = astra.getWorldCoordinateAt(x, y);
-
 				if (p.z == 0) continue;
 				if (p.z > maxDepth) continue;
-
+                
+                if (zMin) {
+                    if (p.z < zMin) zMin = p.z;
+                }
+                else {
+                    zMin = p.z;
+                }
+                
 				mesh.addVertex(p);
 
 				if (bPointCloudUseColor) {
@@ -57,7 +67,9 @@ void ofApp::update(){
 }
 
 void ofApp::draw(){
-
+    
+    ofBackground(0,0,0);
+    
 	if (!bDrawPointCloud) {
 		ofSetColor(ofColor::white);
 		astra.draw(0, 0);
@@ -67,9 +79,7 @@ void ofApp::draw(){
 		ofEnableDepthTest();
 		ofRotateY(180);
 		ofScale(1.5, 1.5);
-
 		mesh.draw();
-
 		ofDisableDepthTest();
 		cam.end();
 	}
@@ -80,8 +90,11 @@ void ofApp::draw(){
 	ss << "p: switch between images and point cloud" << endl;
 	ss << "c: toggle point cloud using color image or gradient (";
 	ss << (bPointCloudUseColor ? "color image)" : "gradient)") << endl;
-	ss << "rotate the point cloud with the mouse";
-
+    ss << "rotate the point cloud with the mouse" << endl;
+    ss << endl;
+    ss << "zMin: " << zMin << endl;
+    
+    
 	ofSetColor(ofColor::white);
 	ofDrawBitmapStringHighlight(ss.str(), 20, 500);
 }

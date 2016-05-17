@@ -32,4 +32,5 @@ public:
 	bool bPointCloudUseColor;
 	bool bUseRegistration;
 
+    int zMin;
 };
