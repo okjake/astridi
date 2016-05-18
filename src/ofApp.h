@@ -21,6 +21,7 @@ public:
 	void draw();
 
 	void keyPressed(int key);
+    void keyReleased(int key);
 
 	ofxOrbbecAstra astra;
 
@@ -40,4 +41,6 @@ public:
     int height;
     int sine;
     int square;
+    
+    int channel = 1;
 };

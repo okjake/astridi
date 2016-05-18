@@ -16,6 +16,7 @@ void ofApp::setup(){
 	astra.initDepthStream();
 	astra.initPointStream();
     punchy = 0;
+    midiOut.openPort(0);
 }
 
 void ofApp::update(){
@@ -83,12 +84,18 @@ void ofApp::update(){
             punchy = 128;
         }
         
-        if (punchy) { punchy -= 3; }
+        if (punchy && punchy > 0) {
+            midiOut.sendNoteOff(channel, punchy);
+            punchy--;
+            midiOut.sendNoteOn(channel, punchy);
+            if (punchy == 1) {
+                midiOut.sendNoteOff(channel, 1);
+            }
+        }
         
         float phase = zMin * 10 * ofGetElapsedTimef() * M_TWO_PI;
         sine = ofMap(sin(phase), -1, 1, 0, 127);
         square = sin(phase) > 0 ? 127 : 0;
-        
         
     }
 }
@@ -113,36 +120,45 @@ void ofApp::draw(){
 
 	stringstream ss;
     ss << "depth image: " << width << 'x' << height << endl;
-    ss << "r: toggle registration between color & depth images (";
-	ss << (bUseRegistration ? "on)" : "off)") << endl;
-	ss << "p: switch between images and point cloud" << endl;
-	ss << "c: toggle point cloud using color image or gradient (";
-	ss << (bPointCloudUseColor ? "color image)" : "gradient)") << endl;
-    ss << "rotate the point cloud with the mouse" << endl;
-    ss << "---" << endl;
-    ss << "noddy toss" << endl;
+    ss << "[space] switch between images and point cloud" << endl;
+    ss << "[+/-] change midi channel" << endl;
+    ss << "[a-z/1-9] make sweet sweet testing music" << endl;
+    ss << "rotate the point cloud with the mouse" << endl << endl;
+    ss << "--- noddy toss" << endl;
     ss << "raw: " << zMin << endl;
     ss << "step: " << step << endl;
     ss << "multistep: " << multiStep << endl;
-    ss << "punchy: " << punchy << endl;
-    ss << "---";
-    ss << "waves @ " << zMin * 10 << "hz" << endl;
+    ss << "punchy: " << punchy << endl << endl;
+    ss << "--- waves @ " << zMin * 10 << "hz" << endl;
     ss << "sin: " << sine << endl;
-    ss << "square: " << square << endl;
-    ss << endl;
-    
+    ss << "square: " << square << endl << endl;
+    ss << "--- send nonsense to" << endl;
+    ss << "channel: " << channel << endl;
     
 	ofSetColor(ofColor::white);
 	ofDrawBitmapStringHighlight(ss.str(), 20, 500);
 }
 
 void ofApp::keyPressed(int key){
-	if (key == 'p')
+	if (key == ' ')
 		bDrawPointCloud ^= 1;
-	if (key == 'c')
-		bPointCloudUseColor ^= 1;
-	if (key == 'r') {
-		bUseRegistration ^= 1;
-		astra.enableRegistration(bUseRegistration);
-	}
+    if (key == '+' && channel < 16)
+        channel++;
+    if (key == '-' && channel > 1)
+        channel--;
+ 
+    if(isalnum((unsigned char) key)) {
+        int note = ofMap(key, 48, 122, 0, 127);
+        midiOut.sendNoteOn(channel, note);
+        ofLogNotice() << "note: " << note << " freq: " << ofxMidi::mtof(note) << " Hz";
+    }
+    
+}
+
+void ofApp::keyReleased(int key){
+    if(isalnum(key)) {
+        int note = ofMap(key, 48, 122, 0, 127);
+        int velocity = 0;
+        midiOut.sendNoteOff(channel, note, velocity);
+    }
 }
