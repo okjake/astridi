@@ -31,6 +31,13 @@ public:
 	bool bDrawPointCloud;
 	bool bPointCloudUseColor;
 	bool bUseRegistration;
-
+    
     int zMin;
+    int step;
+    int multiStep;
+    int punchy;
+    int width;
+    int height;
+    int sine;
+    int square;
 };

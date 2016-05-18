@@ -1,11 +1,3 @@
-//
-//  ofApp.cpp
-//  example
-//
-//  Created by Matt Felsen on 11/15/15.
-//
-//
-
 #include "ofApp.h"
 
 void ofApp::setup(){
@@ -23,24 +15,29 @@ void ofApp::setup(){
 	//astra.initColorStream();
 	astra.initDepthStream();
 	astra.initPointStream();
+    punchy = 0;
 }
 
 void ofApp::update(){
-    
-    // some dumb metrics to test midi
-    zMin = 0;
     
     ofSetWindowTitle(ofToString(ofGetFrameRate()));
 
 	astra.update();
 
 	if (astra.isFrameNew()) {
-		mesh.clear();
+        zMin = 0;
+        mesh.clear();
 
-		int maxDepth = 1500;
-		int w = astra.getDepthImage().getWidth();
-		int h = astra.getDepthImage().getHeight();
+		float maxDepth = 1500.0;
+        float minDepth =  443.0;
 
+        // post-normalisation values
+        int   thresh   = 100;
+        int multThresh = 20;
+        
+		int w = width = astra.getDepthImage().getWidth();
+		int h = height = astra.getDepthImage().getHeight();
+        
 		for (int y = 0; y < h; y++) {
 			for (int x = 0; x < w; x++) {
 				ofVec3f p = astra.getWorldCoordinateAt(x, y);
@@ -63,7 +60,37 @@ void ofApp::update(){
 				}
 			}
 		}
-	}
+        
+        // normalise
+        zMin -= minDepth;
+        zMin /= ((maxDepth - minDepth) / 127.0);
+        zMin = 127 - zMin;
+    
+        // step
+        step = zMin > thresh ? 127 : 0;
+        
+        // multistep
+        int prevMultiStep = multiStep;
+        for (int i = 0, on = 0; i < 127; i += multThresh, on = !on) {
+            if (zMin < i) {
+                if (on) multiStep = 127;
+                else multiStep = 0;
+                break;
+            }
+        }
+        
+        if (multiStep != prevMultiStep) {
+            punchy = 128;
+        }
+        
+        if (punchy) { punchy -= 3; }
+        
+        float phase = zMin * 10 * ofGetElapsedTimef() * M_TWO_PI;
+        sine = ofMap(sin(phase), -1, 1, 0, 127);
+        square = sin(phase) > 0 ? 127 : 0;
+        
+        
+    }
 }
 
 void ofApp::draw(){
@@ -85,14 +112,24 @@ void ofApp::draw(){
 	}
 
 	stringstream ss;
-	ss << "r: toggle registration between color & depth images (";
+    ss << "depth image: " << width << 'x' << height << endl;
+    ss << "r: toggle registration between color & depth images (";
 	ss << (bUseRegistration ? "on)" : "off)") << endl;
 	ss << "p: switch between images and point cloud" << endl;
 	ss << "c: toggle point cloud using color image or gradient (";
 	ss << (bPointCloudUseColor ? "color image)" : "gradient)") << endl;
     ss << "rotate the point cloud with the mouse" << endl;
+    ss << "---" << endl;
+    ss << "noddy toss" << endl;
+    ss << "raw: " << zMin << endl;
+    ss << "step: " << step << endl;
+    ss << "multistep: " << multiStep << endl;
+    ss << "punchy: " << punchy << endl;
+    ss << "---";
+    ss << "waves @ " << zMin * 10 << "hz" << endl;
+    ss << "sin: " << sine << endl;
+    ss << "square: " << square << endl;
     ss << endl;
-    ss << "zMin: " << zMin << endl;
     
     
 	ofSetColor(ofColor::white);
