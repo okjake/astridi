@@ -22,7 +22,8 @@ public:
 
 	void keyPressed(int key);
     void keyReleased(int key);
-
+    void log(std::string message);
+    
 	ofxOrbbecAstra astra;
 
 	ofVboMesh mesh;
@@ -43,4 +44,10 @@ public:
     int square;
     
     int channel = 1;
+    int control = 1;
+    int controlVal = 1;
+    int prevzMin = 1;
+    
+    std::string messageLog[50];
+
 };

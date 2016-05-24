@@ -1,7 +1,13 @@
 #include "ofApp.h"
 
+#define FREQ_MOD 0.01
+
 void ofApp::setup(){
-	ofBackground(0);
+    for (int i = 0; i < 50; i++) {
+        messageLog[i] = "";
+    }
+    
+    ofBackground(0);
 	ofSetWindowShape(640*2, 768);
 	ofSetVerticalSync(true);
 
@@ -22,7 +28,6 @@ void ofApp::setup(){
 void ofApp::update(){
     
     ofSetWindowTitle(ofToString(ofGetFrameRate()));
-
 	astra.update();
 
 	if (astra.isFrameNew()) {
@@ -66,7 +71,7 @@ void ofApp::update(){
         zMin -= minDepth;
         zMin /= ((maxDepth - minDepth) / 127.0);
         zMin = 127 - zMin;
-    
+        
         // step
         step = zMin > thresh ? 127 : 0;
         
@@ -83,17 +88,8 @@ void ofApp::update(){
         if (multiStep != prevMultiStep) {
             punchy = 128;
         }
-        
-        if (punchy && punchy > 0) {
-            midiOut.sendNoteOff(channel, punchy);
-            punchy--;
-            midiOut.sendNoteOn(channel, punchy);
-            if (punchy == 1) {
-                midiOut.sendNoteOff(channel, 1);
-            }
-        }
-        
-        float phase = zMin * 10 * ofGetElapsedTimef() * M_TWO_PI;
+    
+        float phase = (zMin * FREQ_MOD) * ofGetElapsedTimef() * TWO_PI;
         sine = ofMap(sin(phase), -1, 1, 0, 127);
         square = sin(phase) > 0 ? 127 : 0;
         
@@ -122,21 +118,35 @@ void ofApp::draw(){
     ss << "depth image: " << width << 'x' << height << endl;
     ss << "[space] switch between images and point cloud" << endl;
     ss << "[+/-] change midi channel" << endl;
-    ss << "[a-z/1-9] make sweet sweet testing music" << endl;
+    ss << "[a-z/1-9] send midi on/off" << endl;
+    ss << "[</>] send control messages" << endl;
+    ss << "[{/}] change control" << endl;
     ss << "rotate the point cloud with the mouse" << endl << endl;
     ss << "--- noddy toss" << endl;
     ss << "raw: " << zMin << endl;
     ss << "step: " << step << endl;
     ss << "multistep: " << multiStep << endl;
     ss << "punchy: " << punchy << endl << endl;
-    ss << "--- waves @ " << zMin * 10 << "hz" << endl;
+    ss << "--- waves @ " << zMin * FREQ_MOD << "hz" << endl;
     ss << "sin: " << sine << endl;
     ss << "square: " << square << endl << endl;
     ss << "--- send nonsense to" << endl;
     ss << "channel: " << channel << endl;
+    ss << "control: " << control << endl << endl;
+    
+    for (int i = 0; i < 50; i++) {
+        ss << messageLog[i] << endl;
+    }
     
 	ofSetColor(ofColor::white);
-	ofDrawBitmapStringHighlight(ss.str(), 20, 500);
+	ofDrawBitmapStringHighlight(ss.str(), 20, 20);
+}
+
+void ofApp::log(std::string message) {
+    for (int i = 50; i > 0; i--) {
+        messageLog[i] = messageLog[i - 1];
+    }
+    messageLog[0] = message;
 }
 
 void ofApp::keyPressed(int key){
@@ -146,11 +156,25 @@ void ofApp::keyPressed(int key){
         channel++;
     if (key == '-' && channel > 1)
         channel--;
- 
+    if (key == '}' && control < 16)
+        control++;
+    if (key == '{' && control > 1)
+        control--;
+    if (key == '<' && controlVal > 1) {
+        controlVal--;
+        midiOut.sendControlChange(channel, control, controlVal);
+        log("MIDI CONTROL CHANGE CH " + to_string(channel) + " CONTROL " + to_string(control) + " VAL " + to_string(controlVal));
+    }
+    if (key == '>' && controlVal < 128) {
+        controlVal++;
+        midiOut.sendControlChange(channel, control, controlVal);
+        log("MIDI CONTROL CHANGE CH " + to_string(channel) + " CONTROL " + to_string(control) + " VAL " + to_string(controlVal));
+    }
+    
     if(isalnum((unsigned char) key)) {
         int note = ofMap(key, 48, 122, 0, 127);
         midiOut.sendNoteOn(channel, note);
-        ofLogNotice() << "note: " << note << " freq: " << ofxMidi::mtof(note) << " Hz";
+        log("MIDI ON  CH " + to_string(channel) + " NOTE " + to_string(note));
     }
     
 }
@@ -160,5 +184,6 @@ void ofApp::keyReleased(int key){
         int note = ofMap(key, 48, 122, 0, 127);
         int velocity = 0;
         midiOut.sendNoteOff(channel, note, velocity);
+        log("MIDI OFF CH " + to_string(channel) + " NOTE " + to_string(note));
     }
 }
